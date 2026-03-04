@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BibleLessonAI Creator + Brain</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>BibleLessonAI Creator + Brain</h1>
+    <div id="apiStatus" class="muted">API: checking...</div>
+  </header>
+
+  <main class="backend-grid">
+    <section class="panel control-panel">
+      <h2>Lesson Input & AI Generation</h2>
+      <p class="muted">Paste lesson content and generate structured, animated slides.</p>
+
+      <label>
+        Lesson Content
+        <textarea id="lessonTextInput" placeholder="Paste lesson text. Supports markers like Main Topic:, Subtopic:, Memory Verse:, Date:, then Q|A|N lines."></textarea>
+      </label>
+
+      <div class="row">
+        <label>
+          Main Topic (AI can auto-fill)
+          <input id="mainTopicInput" type="text" placeholder="TRIALS" />
+        </label>
+        <label>
+          Subtopic (AI can auto-fill)
+          <input id="subtopicInput" type="text" placeholder="Endurance in Faith" />
+        </label>
+      </div>
+
+      <div class="row">
+        <label>
+          Scripture Reading
+          <input id="scriptureReadingInput" type="text" placeholder="John 16:33" />
+        </label>
+        <label>
+          Memory Verse
+          <input id="memoryVerseInput" type="text" placeholder="James 1:12" />
+        </label>
+      </div>
+
+      <div class="row">
+        <label>
+          Lesson Date
+          <input id="lessonDateInput" type="text" placeholder="February 27, 2021" />
+        </label>
+      </div>
+
+      <div class="row">
+        <label>
+          Creator ID
+          <input id="creatorIdInput" type="text" value="user123" />
+        </label>
+        <label>
+          Public Project
+          <select id="isPublicSelect">
+            <option value="true" selected>true</option>
+            <option value="false">false</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="row">
+        <label>
+          Theme Variant
+          <select id="themeSelect">
+            <option value="1">Theme 1 - Royal Blue</option>
+            <option value="2">Theme 2 - Sunrise Gold</option>
+            <option value="3">Theme 3 - Olive Stone</option>
+          </select>
+        </label>
+        <label>
+          Saved Projects (by Creator)
+          <select id="savedProjectsSelect">
+            <option value="">-- load existing --</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="button-row">
+        <button id="loadSampleBtn" type="button">Load Sample</button>
+        <button id="generateBtn" type="button">Generate Slides</button>
+        <button id="redesignBtn" type="button">Redesign Theme</button>
+        <button id="saveBtn" type="button">Save Project</button>
+        <button id="refreshProjectsBtn" type="button">Refresh Projects</button>
+      </div>
+
+      <p id="creatorStatus" class="status">Ready.</p>
+
+      <div id="thinkingWrap" class="thinking-wrap hidden">
+        <div class="thinking-dots" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <p>AI is parsing lesson content and composing layered slides...</p>
+      </div>
+    </section>
+
+    <section class="panel preview-panel">
+      <h2>Dynamic Slide Preview</h2>
+      <p class="muted">Slides include 4+ visual layers, geometric accents, answer/notes boxes, and motion.</p>
+
+      <div id="previewShell" class="preview-shell">
+        <div id="generatedSlidesContainer" class="generated-slides-container"></div>
+
+        <div id="thinkingOverlay" class="thinking-overlay hidden">
+          <div class="thinking-dots" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <p>Generating slide layers...</p>
+        </div>
+      </div>
+
+      <div class="button-row preview-buttons">
+        <button id="prevSlideBtn" type="button">Previous Slide</button>
+        <button id="nextSlideBtn" type="button">Next Slide</button>
+        <button id="sendLiveBtn" type="button">Send Live Index</button>
+        <button id="generatePptxBtn" type="button">Generate PPTX</button>
+      </div>
+
+      <label class="tweak-field">
+        Tweak Prompt (Optional)
+        <textarea id="tweakInput" placeholder="Example: Make question slides more concise and notes more reflective."></textarea>
+      </label>
+
+      <section class="suggestions-block">
+        <h3>AI Suggestions</h3>
+        <ul id="suggestionsList" class="suggestions-list"></ul>
+      </section>
+
+      <section>
+        <h3>Slides Outline</h3>
+        <div id="slidesList" class="slides-list"></div>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
