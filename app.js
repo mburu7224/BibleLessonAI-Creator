@@ -43,6 +43,8 @@ const state = {
   projectId: null,
   currentSlideIndex: 0,
   isGenerating: false,
+  // Store for temporarily uploaded images (max 5)
+  uploadedImages: [],
   project: {
     mainTopic: "TEACH YOUR CHILDREN",
     subtopic: "",
@@ -103,7 +105,15 @@ const refs = {
   modalCreatorId: document.getElementById("modalCreatorId"),
   modalThemeSelect: document.getElementById("modalThemeSelect"),
   modalIsPublic: document.getElementById("modalIsPublic"),
-  modalLessonContent: document.getElementById("modalLessonContent")
+  modalLessonContent: document.getElementById("modalLessonContent"),
+  // Image upload elements
+  imageUploadBtn: document.getElementById("imageUploadBtn"),
+  processImageBtn: document.getElementById("processImageBtn"),
+  imageFileInput: document.getElementById("imageFileInput"),
+  imagePreviewIndicator: document.getElementById("imagePreviewIndicator"),
+  imageFileName: document.getElementById("imageFileName"),
+  imageThumbnailsContainer: document.getElementById("imageThumbnailsContainer"),
+  imageThumbnailsList: document.getElementById("imageThumbnailsList")
 };
 
 const firebaseApp = initializeApp(firebaseConfig);
@@ -150,6 +160,214 @@ function bindEvents() {
   refs.scriptureReadingInput.addEventListener("input", syncMetaFromInputsAndRender);
   refs.memoryVerseInput.addEventListener("input", syncMetaFromInputsAndRender);
   refs.lessonDateInput.addEventListener("input", syncMetaFromInputsAndRender);
+
+  // Image upload event listeners
+  refs.imageUploadBtn.addEventListener("click", () => {
+    refs.imageFileInput.click();
+  });
+
+  refs.imageFileInput.addEventListener("change", handleImageFileSelect);
+
+  refs.processImageBtn.addEventListener("click", handleProcessImage);
+}
+
+// Image upload handler - stores images temporarily in memory (max 5)
+function handleImageFileSelect(event) {
+  const files = event.target.files;
+  if (!files || files.length === 0) return;
+
+  const validTypes = ["image/jpeg", "image/jpg", "image/png"];
+  const MAX_IMAGES = 5;
+
+  // Check if adding these files would exceed the limit
+  const currentCount = state.uploadedImages.length;
+  const remainingSlots = MAX_IMAGES - currentCount;
+
+  if (remainingSlots <= 0) {
+    alert("Maximum number of images (5) reached. Please remove an image before adding more.");
+    event.target.value = "";
+    return;
+  }
+
+  // Limit to remaining slots
+  const filesToProcess = Array.from(files).slice(0, remainingSlots);
+
+  if (files.length > remainingSlots) {
+    alert(`You can only upload ${remainingSlots} more image(s). ${files.length - remainingSlots} file(s) will be ignored.`);
+  }
+
+  let processedCount = 0;
+
+  filesToProcess.forEach((file) => {
+    // Validate file type
+    if (!validTypes.includes(file.type)) {
+      console.warn("Invalid file type:", file.type);
+      return;
+    }
+
+    // Read and store the image in memory
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const imageData = {
+        id: Date.now() + Math.random(), // Unique ID for removal
+        name: file.name,
+        type: file.type,
+        data: e.target.result, // Base64 data URL
+        size: file.size
+      };
+
+      // Add to state
+      state.uploadedImages.push(imageData);
+      processedCount++;
+
+      // Update UI
+      renderImageThumbnails();
+      updateImageCount();
+
+      console.log("Image uploaded:", imageData.name);
+
+      // Enable the process button if we have images
+      if (state.uploadedImages.length > 0) {
+        refs.processImageBtn.disabled = false;
+      }
+    };
+
+    reader.onerror = function() {
+      console.error("Error reading file:", file.name);
+    };
+
+    reader.readAsDataURL(file);
+  });
+
+  // Reset the file input so the same files can be selected again
+  event.target.value = "";
+}
+
+// Render thumbnail previews
+function renderImageThumbnails() {
+  refs.imageThumbnailsList.innerHTML = "";
+
+  if (state.uploadedImages.length === 0) {
+    refs.imageThumbnailsContainer.classList.add("hidden");
+    return;
+  }
+
+  refs.imageThumbnailsContainer.classList.remove("hidden");
+
+  state.uploadedImages.forEach((image, index) => {
+    const thumbnail = document.createElement("div");
+    thumbnail.className = "image-thumbnail";
+    thumbnail.innerHTML = `
+      <img src="${image.data}" alt="${image.name}" title="${image.name}">
+      <button type="button" class="remove-btn" data-id="${image.id}" title="Remove image">&times;</button>
+    `;
+
+    // Add remove event listener
+    thumbnail.querySelector(".remove-btn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      removeImage(image.id);
+    });
+
+    refs.imageThumbnailsList.appendChild(thumbnail);
+  });
+}
+
+// Update image count display
+function updateImageCount() {
+  const count = state.uploadedImages.length;
+  if (count > 0) {
+    refs.imagePreviewIndicator.classList.remove("hidden");
+    refs.imageFileName.textContent = `${count} image(s) uploaded`;
+  } else {
+    refs.imagePreviewIndicator.classList.add("hidden");
+  }
+}
+
+// Remove an image by ID
+function removeImage(imageId) {
+  state.uploadedImages = state.uploadedImages.filter(img => img.id !== imageId);
+  renderImageThumbnails();
+  updateImageCount();
+
+  // Disable process button if no images
+  if (state.uploadedImages.length === 0) {
+    refs.processImageBtn.disabled = true;
+  }
+
+  console.log("Image removed. Remaining:", state.uploadedImages.length);
+}
+
+// OCR processing function - processes all uploaded images
+async function handleProcessImage() {
+  if (!state.uploadedImages || state.uploadedImages.length === 0) {
+    console.log("No images uploaded to process");
+    return;
+  }
+
+  console.log("Processing images with OCR...", state.uploadedImages.length, "images");
+
+  // Show processing status
+  const originalStatus = refs.creatorStatus.textContent;
+  refs.creatorStatus.textContent = `Reading text from ${state.uploadedImages.length} image(s)...`;
+  refs.processImageBtn.disabled = true;
+
+  let allExtractedText = [];
+
+  try {
+    // Process each image sequentially
+    for (let i = 0; i < state.uploadedImages.length; i++) {
+      const image = state.uploadedImages[i];
+      refs.creatorStatus.textContent = `Reading text from image ${i + 1} of ${state.uploadedImages.length}...`;
+
+      // Use Tesseract.js to perform OCR
+      const result = await Tesseract.recognize(
+        image.data,
+        'eng',
+        {
+          logger: m => console.log(m)
+        }
+      );
+
+      const extractedText = result.data.text.trim();
+
+      if (extractedText) {
+        allExtractedText.push(`--- Text from: ${image.name} ---\n${extractedText}`);
+        console.log("OCR completed for", image.name);
+      } else {
+        console.log("No text found in", image.name);
+      }
+    }
+
+    // Get current text in the input field
+    const currentText = refs.lessonTextInput.value;
+    const combinedText = allExtractedText.join("\n\n");
+
+    if (combinedText) {
+      // Append the extracted text below existing content
+      if (currentText && currentText.length > 0) {
+        refs.lessonTextInput.value = currentText + "\n\n" + combinedText;
+      } else {
+        refs.lessonTextInput.value = combinedText;
+      }
+
+      refs.creatorStatus.textContent = `Text extracted from ${state.uploadedImages.length} image(s) and inserted!`;
+      console.log("All OCR completed. Combined text:", combinedText);
+    } else {
+      refs.creatorStatus.textContent = "No text found in any of the images.";
+    }
+
+  } catch (error) {
+    console.error("OCR Error:", error);
+    refs.creatorStatus.textContent = "Error reading image text.";
+  }
+
+  // Reset button state
+  refs.processImageBtn.disabled = false;
+
+  // Clear status after a few seconds
+  setTimeout(() => {
+    refs.creatorStatus.textContent = "Ready.";
+  }, 3000);
 }
 
 function loadSampleProject() {
