@@ -1,4 +1,4 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
+﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-app.js";
 import {
   getFirestore,
   collection,
@@ -9,7 +9,8 @@ import {
   query,
   where,
   serverTimestamp,
-  getDoc
+  getDoc,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/11.7.1/firebase-firestore.js";
 import { firebaseConfig, appSettings } from "./firebaseConfig.js";
 
@@ -21,16 +22,21 @@ const THEMES = {
 const TEST_ADMIN_KEY = "NewRuiruMediaKey2025!";
 
 const sampleLessonText = [
-  "Main Topic: TRIALS",
-  "Subtopic: Endurance in Faith",
-  "Scripture Reading: John 16:33",
-  "Memory Verse: James 1:12",
-  "Date: February 27, 2021",
-  "What may the followers of Yahshua expect in this world?",
-  "John 16:33",
-  "How should believers respond to hardship?",
-  "James 1:2-4",
-  "NB: Trials reveal faith depth and spiritual maturity."
+  "Lesson for March 7, 2026 (18 Adar)",
+  "TEACH YOUR CHILDREN",
+  "Scripture Reading: Deuteronomy 6.",
+  "Memory verse: Deuteronomy 6:7.",
+  "What was said of Abraham? Genesis 18:19.",
+  "What did Moses teach Israel to do? Deut. 6:4-5.",
+  "In turn, what were the Israelites to do? Deuteronomy 6:6-9.",
+  "What else is to be taught? Deuteronomy 6:20-23.",
+  "NOTE: Remember, Egypt represents sin, and as such the Lord is willing to deliver us from the \"bonds of Egypt\" and allow us to enter the promised land, the New Jerusalem.",
+  "In teaching our children, what should we tell them about sin? Romans 3:23.",
+  "What was part of Yashua's mission? Luke 5:31-32.",
+  "Who leads us to repentance? Romans 2:1-4; Philippians 2:13.",
+  "After being called to repentance, what are we expected to do? Acts 2:37-39; Romans 2:11-13.",
+  "How does Paul exhort the brethren? Rom. 12:1-2.",
+  "What else are we to teach our children? 1 John 2:15-17."
 ].join("\n");
 
 const state = {
@@ -38,11 +44,11 @@ const state = {
   currentSlideIndex: 0,
   isGenerating: false,
   project: {
-    mainTopic: "TRIALS",
-    subtopic: "Endurance in Faith",
-    scriptureReading: "John 16:33",
-    memoryVerse: "James 1:12",
-    lessonDate: "February 27, 2021",
+    mainTopic: "TEACH YOUR CHILDREN",
+    subtopic: "",
+    scriptureReading: "Deuteronomy 6.",
+    memoryVerse: "Deuteronomy 6:7.",
+    lessonDate: "March 7, 2026 (18 Adar)",
     themeId: 1,
     suggestions: [],
     pptxUrl: "",
@@ -65,6 +71,10 @@ const refs = {
   isPublicSelect: document.getElementById("isPublicSelect"),
   themeSelect: document.getElementById("themeSelect"),
   savedProjectsSelect: document.getElementById("savedProjectsSelect"),
+  savedLessonsSection: document.getElementById("savedLessonsSection"),
+  savedLessonsContainer: document.getElementById("savedLessonsContainer"),
+  projectsSection: document.getElementById("projectsSection"),
+  projectsListContainer: document.getElementById("projectsListContainer"),
   loadSampleBtn: document.getElementById("loadSampleBtn"),
   generateBtn: document.getElementById("generateBtn"),
   redesignBtn: document.getElementById("redesignBtn"),
@@ -79,7 +89,21 @@ const refs = {
   suggestionsList: document.getElementById("suggestionsList"),
   slidesList: document.getElementById("slidesList"),
   thinkingWrap: document.getElementById("thinkingWrap"),
-  thinkingOverlay: document.getElementById("thinkingOverlay")
+  thinkingOverlay: document.getElementById("thinkingOverlay"),
+  // Modal elements
+  editModal: document.getElementById("editModal"),
+  closeModalBtn: document.getElementById("closeModalBtn"),
+  cancelEditBtn: document.getElementById("cancelEditBtn"),
+  saveEditBtn: document.getElementById("saveEditBtn"),
+  modalMainTopic: document.getElementById("modalMainTopic"),
+  modalSubtopic: document.getElementById("modalSubtopic"),
+  modalScriptureReading: document.getElementById("modalScriptureReading"),
+  modalMemoryVerse: document.getElementById("modalMemoryVerse"),
+  modalLessonDate: document.getElementById("modalLessonDate"),
+  modalCreatorId: document.getElementById("modalCreatorId"),
+  modalThemeSelect: document.getElementById("modalThemeSelect"),
+  modalIsPublic: document.getElementById("modalIsPublic"),
+  modalLessonContent: document.getElementById("modalLessonContent")
 };
 
 const firebaseApp = initializeApp(firebaseConfig);
@@ -93,6 +117,7 @@ async function initialize() {
   loadSampleProject();
   await checkApiHealth();
   await refreshCreatorProjects();
+  await renderSavedLessons();
 }
 
 function bindEvents() {
@@ -100,12 +125,25 @@ function bindEvents() {
   refs.generateBtn.addEventListener("click", generateSlidesWithAi);
   refs.redesignBtn.addEventListener("click", applyThemeRedesign);
   refs.saveBtn.addEventListener("click", saveProject);
-  refs.refreshProjectsBtn.addEventListener("click", refreshCreatorProjects);
+  refs.refreshProjectsBtn.addEventListener("click", () => {
+    refreshCreatorProjects();
+    renderSavedLessons();
+  });
   refs.savedProjectsSelect.addEventListener("change", loadSelectedProject);
   refs.prevSlideBtn.addEventListener("click", () => moveSlide(-1));
   refs.nextSlideBtn.addEventListener("click", () => moveSlide(1));
   refs.sendLiveBtn.addEventListener("click", sendLiveIndex);
   refs.generatePptxBtn.addEventListener("click", generatePptx);
+
+  // Modal event listeners
+  refs.closeModalBtn.addEventListener("click", closeEditModal);
+  refs.cancelEditBtn.addEventListener("click", closeEditModal);
+  refs.saveEditBtn.addEventListener("click", saveLessonEdit);
+  refs.editModal.addEventListener("click", (e) => {
+    if (e.target === refs.editModal) {
+      closeEditModal();
+    }
+  });
 
   refs.mainTopicInput.addEventListener("input", syncMetaFromInputsAndRender);
   refs.subtopicInput.addEventListener("input", syncMetaFromInputsAndRender);
@@ -166,9 +204,17 @@ function parseLessonToStructuredProject({ lessonText, themeId, tweakPrompt }) {
     .map((line) => line.trim())
     .filter(Boolean);
 
-  const mainTopic = extractMetaValue(lines, /^(main\s*topic|topic)\s*:/i) || refs.mainTopicInput.value.trim();
-  const lessonDate = extractMetaValue(lines, /^(date|lesson\s*date)\s*:/i) || refs.lessonDateInput.value.trim();
-  const subtopic = extractMetaValue(lines, /^sub\s*topic\s*:/i) || refs.subtopicInput.value.trim() || "";
+  // Extract metadata using explicit markers first
+  const explicitTopic = extractMetaValue(lines, /^(main\s*topic|topic)\s*:/i);
+  const explicitDate = extractMetaValue(lines, /^(date|lesson\s*date)\s*:/i);
+  const explicitSubtopic = extractMetaValue(lines, /^sub\s*topic\s*:/i);
+
+  // Use explicit values, then try to extract from content, finally fall back to input fields
+  // First extract date from content to use for topic detection (to skip date lines)
+  const detectedDateFromContent = extractDateFromContent(lines);
+  const mainTopic = explicitTopic || extractTopicFromContent(lines, null, detectedDateFromContent) || refs.mainTopicInput.value.trim();
+  const lessonDate = explicitDate || detectedDateFromContent || refs.lessonDateInput.value.trim();
+  const subtopic = explicitSubtopic || refs.subtopicInput.value.trim() || "";
   const scriptureReading = extractMetaValue(lines, /^(scripture\s*reading|reading|scripture)\s*:/i) || refs.scriptureReadingInput.value.trim() || "";
   const memoryVerse = extractMetaValue(lines, /^memory\s*verse\s*:/i) || refs.memoryVerseInput.value.trim() || "";
 
@@ -183,8 +229,6 @@ function parseLessonToStructuredProject({ lessonText, themeId, tweakPrompt }) {
   const contentScanLines = expandQuestionSegments(contentLines);
 
   const orderedSlides = [];
-  const questionSlides = [];
-  const noteSlides = [];
   const seenQuestions = new Set();
   const seenNotes = new Set();
 
@@ -210,6 +254,11 @@ function parseLessonToStructuredProject({ lessonText, themeId, tweakPrompt }) {
       themeId
     });
   }
+
+  // Process content sequentially to preserve order: Questions and Notes in original positions
+  // We'll collect items and add them in order
+  const contentItems = [];
+  let questionIndex = 0;
 
   // Rule: Questions must end with '?'.
   // Rule: Everything after a question until next question or section break is answer.
@@ -244,11 +293,13 @@ function parseLessonToStructuredProject({ lessonText, themeId, tweakPrompt }) {
 
       if (question && answerRefs.length && !seenQuestions.has(questionKey)) {
         seenQuestions.add(questionKey);
-        questionSlides.push({
+        questionIndex++;
+        contentItems.push({
           type: "question",
           question,
           answer: answerRefs.join("; "),
           notes: "",
+          questionNumber: questionIndex,
           themeId
         });
       }
@@ -257,14 +308,16 @@ function parseLessonToStructuredProject({ lessonText, themeId, tweakPrompt }) {
       continue;
     }
 
-    // Rule: Notes should not include questions or answers.
-    if (isLikelyNoteLine(line) || isSectionBreak(line)) {
+    // Rule: Only detect notes when they explicitly start with NOTE:, NB:, or N.B.
+    // Do NOT use isLikelyNoteLine as it's too aggressive
+    if (isSectionBreak(line)) {
       const noteBlock = [cleanNoteText(line)];
       let j = i + 1;
+      // Only continue collecting note lines if they also start with NB/NOTE
       while (
         j < contentScanLines.length &&
         !isQuestionLine(contentScanLines[j]) &&
-        (isLikelyNoteLine(contentScanLines[j]) || isSectionBreak(contentScanLines[j]))
+        isSectionBreak(contentScanLines[j])
       ) {
         noteBlock.push(cleanNoteText(contentScanLines[j]));
         j += 1;
@@ -278,11 +331,13 @@ function parseLessonToStructuredProject({ lessonText, themeId, tweakPrompt }) {
 
       if (noteText && !containsBibleReference(noteText) && !seenNotes.has(noteKey)) {
         seenNotes.add(noteKey);
-        noteSlides.push({
+        // Add note to content items in the exact position it appears in the lesson
+        contentItems.push({
           type: "note",
           question: "Note",
           answer: "",
           notes: noteText,
+          questionNumber: 0,
           themeId
         });
       }
@@ -294,14 +349,13 @@ function parseLessonToStructuredProject({ lessonText, themeId, tweakPrompt }) {
     i += 1;
   }
 
-  // Slide order hierarchy:
-  // 1) Cover, 2) Scripture/Memory twin (if any), 3) All Q&A, 4) Notes.
-  const numberedQuestionSlides = questionSlides.map((slide, idx) => ({
-    ...slide,
-    questionNumber: idx + 1
-  }));
+  // Add all content items (questions and notes) in the order they appeared in the lesson
+  // This preserves the note placement between questions
+  for (const item of contentItems) {
+    orderedSlides.push(item);
+  }
 
-  const slides = [...orderedSlides, ...numberedQuestionSlides, ...noteSlides];
+  const slides = orderedSlides;
 
   return {
     mainTopic,
@@ -365,17 +419,21 @@ function ensureCompulsoryTitleSlide(slides, meta) {
     themeId: Number(meta.themeId || appSettings.defaultThemeId)
   };
 
-  const nonTitleSlides = (slides || []).filter((slide) => slide.type !== "title");
-  const questionSlides = nonTitleSlides
-    .filter((slide) => slide.type === "question")
-    .map((slide, idx) => ({ ...slide, questionNumber: idx + 1 }));
-  const nonQuestionSlides = nonTitleSlides.filter((slide) => slide.type !== "question");
-  const scriptureSlides = nonQuestionSlides.filter((slide) => slide.type === "scriptureMemory");
-  const noteSlides = nonQuestionSlides.filter((slide) => slide.type === "note");
-  const otherSlides = nonQuestionSlides.filter((slide) => !["scriptureMemory", "note"].includes(slide.type));
+  // Filter out any existing title slide to avoid duplicates
+  const contentSlides = (slides || []).filter((slide) => slide.type !== "title");
+  
+  // Renumber questions while preserving their original order in the lesson flow
+  let questionCounter = 0;
+  const orderedContent = contentSlides.map((slide) => {
+    if (slide.type === "question") {
+      questionCounter++;
+      return { ...slide, questionNumber: questionCounter };
+    }
+    return slide;
+  });
 
-  // Keep hierarchy stable on load/edit.
-  return [titleSlide, ...scriptureSlides, ...questionSlides, ...noteSlides, ...otherSlides];
+  // PRESERVE the exact order from parsing - do NOT reorder!
+  return [titleSlide, ...orderedContent];
 }
 
 function renderAll() {
@@ -669,15 +727,15 @@ async function saveProject() {
   };
 
   try {
-    if (state.projectId) {
-      await setDoc(doc(db, appSettings.projectsCollection, state.projectId), payload, { merge: true });
-      setStatus(`Project updated: ${state.projectId}`);
-    } else {
-      const created = await addDoc(collection(db, appSettings.projectsCollection), payload);
-      state.projectId = created.id;
-      setStatus(`Project saved: ${state.projectId}`);
-    }
+    // Always create a NEW entry - never overwrite existing
+    const created = await addDoc(collection(db, appSettings.projectsCollection), payload);
+    state.projectId = created.id;
+    setStatus("New lesson saved successfully!");
+    
+    // Show projects list below confirmation
     await refreshCreatorProjects();
+    await renderSavedLessons();
+    refs.projectsSection.classList.remove("hidden");
   } catch (error) {
     console.error(error);
     setStatus(`Save failed [${error?.code || "unknown"}]: ${error.message}`);
@@ -691,6 +749,8 @@ async function refreshCreatorProjects() {
   try {
     const q = query(collection(db, appSettings.projectsCollection), where("creatorId", "==", creatorId));
     const snapshot = await getDocs(q);
+    
+    // Populate dropdown
     snapshot.docs.forEach((projectDoc) => {
       const data = projectDoc.data();
       const option = document.createElement("option");
@@ -698,6 +758,43 @@ async function refreshCreatorProjects() {
       option.textContent = `${data.mainTopic || "Untitled"} | ${data.lessonDate || "No date"}`;
       refs.savedProjectsSelect.appendChild(option);
     });
+    
+    // Populate cards list
+    refs.projectsListContainer.innerHTML = "";
+    if (snapshot.docs.length === 0) {
+      refs.projectsListContainer.innerHTML = "<p class='muted'>No projects found.</p>";
+    }
+    
+    snapshot.docs.forEach((projectDoc) => {
+      const data = projectDoc.data();
+      const projectCard = document.createElement("div");
+      projectCard.className = `project-card ${state.projectId === projectDoc.id ? "active" : ""}`;
+      projectCard.innerHTML = `
+        <p class="project-card-topic">${escapeHtml(data.mainTopic || "Untitled")}</p>
+        <p class="project-card-date">${escapeHtml(data.lessonDate || "No date")}</p>
+        <div class="project-card-actions">
+          <button class="edit-btn" data-id="${projectDoc.id}">Edit</button>
+          <button class="delete-btn" data-id="${projectDoc.id}">Delete</button>
+        </div>
+      `;
+      
+      // Edit button
+      projectCard.querySelector(".edit-btn").addEventListener("click", (e) => {
+        e.stopPropagation();
+        loadSelectedProjectById(projectDoc.id);
+      });
+      
+      // Delete button
+      projectCard.querySelector(".delete-btn").addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (confirm("Are you sure you want to delete this project?")) {
+          deleteProject(projectDoc.id);
+        }
+      });
+      
+      refs.projectsListContainer.appendChild(projectCard);
+    });
+    
     if (!snapshot.docs.length) {
       setStatus("No projects found for this creator yet.");
     }
@@ -707,12 +804,252 @@ async function refreshCreatorProjects() {
   }
 }
 
+// Render Saved Bible Lessons - YouTube-style container
+async function renderSavedLessons() {
+  const creatorId = refs.creatorIdInput.value.trim() || "user123";
+  
+  try {
+    const q = query(collection(db, appSettings.projectsCollection), where("creatorId", "==", creatorId));
+    const snapshot = await getDocs(q);
+    
+    refs.savedLessonsContainer.innerHTML = "";
+    
+    if (snapshot.docs.length === 0) {
+      refs.savedLessonsContainer.innerHTML = "<p class='muted'>No saved lessons yet.</p>";
+      return;
+    }
+    
+    // Helper function to parse date from lesson date string
+    const parseLessonDate = (dateStr) => {
+      if (!dateStr) return null;
+      // Try parsing various date formats
+      const parsed = new Date(dateStr);
+      return isNaN(parsed.getTime()) ? null : parsed;
+    };
+    
+    // Get today's date (normalized to midnight)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Collect all lessons with their parsed dates
+    const lessonsWithDates = snapshot.docs.map((projectDoc) => {
+      const data = projectDoc.data();
+      const lessonDate = parseLessonDate(data.lessonDate);
+      return {
+        doc: projectDoc,
+        data: data,
+        lessonDate: lessonDate,
+        // Calculate days difference from today (if date exists)
+        daysDiff: lessonDate ? Math.round((lessonDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) : null
+      };
+    });
+    
+    // Sort lessons chronologically:
+    // 1. Current/upcoming lesson (nearest to today) first
+    // 2. Past lessons in descending order (most recent first)
+    // 3. Future lessons in ascending order
+    lessonsWithDates.sort((a, b) => {
+      // Handle lessons without dates - put them at the end
+      if (a.daysDiff === null && b.daysDiff === null) return 0;
+      if (a.daysDiff === null) return 1;
+      if (b.daysDiff === null) return -1;
+      
+      // Current/upcoming lesson (closest to today, including today) should be first
+      // This means lessons with daysDiff >= 0 should come before lessons with daysDiff < 0
+      if (a.daysDiff >= 0 && b.daysDiff < 0) return -1;
+      if (a.daysDiff < 0 && b.daysDiff >= 0) return 1;
+      
+      // Both are upcoming or today - sort by ascending (nearest first)
+      if (a.daysDiff >= 0 && b.daysDiff >= 0) {
+        return a.daysDiff - b.daysDiff;
+      }
+      
+      // Both are past - sort by descending (most recent first)
+      return b.daysDiff - a.daysDiff;
+    });
+    
+    lessonsWithDates.forEach(({ doc: projectDoc, data }) => {
+      const slideCount = data.slides?.length || 0;
+      const hasSuggestions = (data.suggestions?.length || 0) > 0;
+      
+      const lessonCard = document.createElement("div");
+      lessonCard.className = `lesson-card ${state.projectId === projectDoc.id ? "active" : ""}`;
+      lessonCard.dataset.id = projectDoc.id;
+      
+      lessonCard.innerHTML = `
+        <div class="lesson-card-header">
+          <h4 class="lesson-card-title">${escapeHtml(data.mainTopic || "Untitled Lesson")}</h4>
+        </div>
+        <div class="lesson-card-meta">
+          <span class="lesson-card-meta-item">📖 ${escapeHtml(data.scriptureReading || "No scripture")}</span>
+          <span class="lesson-card-meta-item">📅 ${escapeHtml(data.lessonDate || "No date")}</span>
+          <span class="lesson-card-meta-item">👤 ${escapeHtml(data.creatorId || "Unknown")}</span>
+        </div>
+        <div class="lesson-card-badges">
+          ${hasSuggestions ? '<span class="lesson-badge">💡 Suggestions</span>' : ''}
+          <span class="lesson-badge">${slideCount} slides</span>
+        </div>
+        <div class="lesson-card-actions">
+          <button class="edit-btn" data-id="${projectDoc.id}">Edit</button>
+          <button class="delete-btn" data-id="${projectDoc.id}">Delete</button>
+        </div>
+      `;
+      
+      // Click on card to load lesson into viewer
+      lessonCard.addEventListener("click", (e) => {
+        if (e.target.classList.contains("edit-btn") || e.target.classList.contains("delete-btn")) {
+          return; // Let button handlers deal with it
+        }
+        loadLessonIntoViewer(projectDoc.id);
+      });
+      
+      // Edit button - open edit modal
+      lessonCard.querySelector(".edit-btn").addEventListener("click", (e) => {
+        e.stopPropagation();
+        openEditModal(projectDoc.id, data);
+      });
+      
+      // Delete button - remove from storage
+      lessonCard.querySelector(".delete-btn").addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (confirm("Are you sure you want to delete this lesson?")) {
+          deleteLesson(projectDoc.id);
+        }
+      });
+      
+      refs.savedLessonsContainer.appendChild(lessonCard);
+    });
+  } catch (error) {
+    console.error(error);
+    refs.savedLessonsContainer.innerHTML = "<p class='muted'>Error loading lessons.</p>";
+  }
+}
+
+// Load lesson into viewer (without full editor)
+async function loadLessonIntoViewer(projectId) {
+  try {
+    const snapshot = await getDoc(doc(db, appSettings.projectsCollection, projectId));
+    if (!snapshot.exists()) {
+      setStatus("Lesson not found.");
+      return;
+    }
+
+    const data = snapshot.data();
+    state.projectId = projectId;
+    state.project = {
+      mainTopic: data.mainTopic || "UNTITLED TOPIC",
+      subtopic: data.subtopic || "",
+      scriptureReading: data.scriptureReading || "",
+      memoryVerse: data.memoryVerse || "",
+      lessonDate: data.lessonDate || "No date",
+      themeId: Number(data.themeId || appSettings.defaultThemeId),
+      suggestions: data.suggestions || [],
+      pptxUrl: data.pptxUrl || "",
+      slides: ensureCompulsoryTitleSlide(
+        (data.slides || []).map((slide) => normalizeSlide(slide, Number(data.themeId || appSettings.defaultThemeId))),
+        {
+          mainTopic: data.mainTopic || "UNTITLED TOPIC",
+          lessonDate: data.lessonDate || "No date",
+          themeId: Number(data.themeId || appSettings.defaultThemeId)
+        }
+      )
+    };
+    state.currentSlideIndex = 0;
+
+    // Update inputs
+    refs.mainTopicInput.value = state.project.mainTopic;
+    refs.subtopicInput.value = state.project.subtopic;
+    refs.scriptureReadingInput.value = state.project.scriptureReading;
+    refs.memoryVerseInput.value = state.project.memoryVerse;
+    refs.lessonDateInput.value = state.project.lessonDate;
+    refs.themeSelect.value = String(state.project.themeId);
+    refs.savedProjectsSelect.value = projectId;
+
+    renderAll();
+    renderSavedLessons(); // Update active state
+    setStatus(`Loaded: ${data.mainTopic || "Untitled"}`);
+  } catch (error) {
+    console.error(error);
+    setStatus(`Failed to load: ${error.message}`);
+  }
+}
+
+// Delete lesson
+async function deleteLesson(projectId) {
+  try {
+    await deleteDoc(doc(db, appSettings.projectsCollection, projectId));
+    setStatus("Lesson deleted.");
+    if (state.projectId === projectId) {
+      state.projectId = null;
+    }
+    renderSavedLessons();
+    refreshCreatorProjects();
+  } catch (error) {
+    console.error(error);
+    setStatus(`Delete failed: ${error.message}`);
+  }
+}
+
+// Modal functions for editing lessons
+let currentEditingId = null;
+
+function openEditModal(projectId, lessonData) {
+  currentEditingId = projectId;
+  refs.modalMainTopic.value = lessonData.mainTopic || "";
+  refs.modalSubtopic.value = lessonData.subtopic || "";
+  refs.modalScriptureReading.value = lessonData.scriptureReading || "";
+  refs.modalMemoryVerse.value = lessonData.memoryVerse || "";
+  refs.modalLessonDate.value = lessonData.lessonDate || "";
+  refs.modalCreatorId.value = lessonData.creatorId || "";
+  refs.modalThemeSelect.value = String(lessonData.themeId || 1);
+  refs.modalIsPublic.value = String(lessonData.isPublic || false);
+  refs.modalLessonContent.value = lessonData.lessonText || lessonData.rawLessonText || "";
+  refs.editModal.classList.remove("hidden");
+}
+
+function closeEditModal() {
+  refs.editModal.classList.add("hidden");
+  currentEditingId = null;
+}
+
+async function saveLessonEdit() {
+  if (!currentEditingId) return;
+  
+  try {
+    const updatedData = {
+      mainTopic: refs.modalMainTopic.value.trim() || "Untitled Lesson",
+      subtopic: refs.modalSubtopic.value.trim(),
+      scriptureReading: refs.modalScriptureReading.value.trim(),
+      memoryVerse: refs.modalMemoryVerse.value.trim(),
+      lessonDate: refs.modalLessonDate.value.trim() || "No date",
+      creatorId: refs.modalCreatorId.value.trim(),
+      themeId: Number(refs.modalThemeSelect.value),
+      isPublic: refs.modalIsPublic.value === "true",
+      lessonText: refs.modalLessonContent.value.trim(),
+      rawLessonText: refs.modalLessonContent.value.trim()
+    };
+    
+    await setDoc(doc(db, appSettings.projectsCollection, currentEditingId), updatedData, { merge: true });
+    
+    closeEditModal();
+    renderSavedLessons();
+    refreshCreatorProjects();
+    setStatus("Lesson updated successfully!");
+  } catch (error) {
+    console.error(error);
+    setStatus(`Update failed: ${error.message}`);
+  }
+}
+
 async function loadSelectedProject() {
   const projectId = refs.savedProjectsSelect.value;
   if (!projectId) {
     return;
   }
+  await loadSelectedProjectById(projectId);
+}
 
+async function loadSelectedProjectById(projectId) {
   try {
     const snapshot = await getDoc(doc(db, appSettings.projectsCollection, projectId));
     if (!snapshot.exists()) {
@@ -749,14 +1086,31 @@ async function loadSelectedProject() {
     refs.lessonDateInput.value = state.project.lessonDate;
     refs.themeSelect.value = String(state.project.themeId);
     refs.isPublicSelect.value = String(Boolean(data.isPublic));
+    refs.savedProjectsSelect.value = projectId;
 
     renderAll();
+    refreshCreatorProjects();
     setStatus(`Loaded project ${projectId}.`);
   } catch (error) {
     console.error(error);
     setStatus(`Failed to load project: ${error.message}`);
   }
 }
+
+async function deleteProject(projectId) {
+  try {
+    await deleteDoc(doc(db, appSettings.projectsCollection, projectId));
+    setStatus("Project deleted.");
+    if (state.projectId === projectId) {
+      state.projectId = null;
+    }
+    refreshCreatorProjects();
+  } catch (error) {
+    console.error(error);
+    setStatus(`Delete failed: ${error.message}`);
+  }
+}
+
 
 async function sendLiveIndex() {
   if (!state.projectId) {
@@ -845,7 +1199,7 @@ function isQuestionLine(line) {
 }
 
 function isSectionBreak(line) {
-  return /^(nb|note|n\/b)\s*[:\-]/i.test(String(line || "").trim());
+  return /^(nb|note|n\.?b\.?|n\/b)\s*[:\-]/i.test(String(line || "").trim());
 }
 
 function normalizeQuestion(line) {
@@ -930,7 +1284,7 @@ function isLikelyNoteLine(line) {
 }
 
 function cleanNoteText(line) {
-  return line.replace(/^(nb|note|n\/b)\s*[:\-]\s*/i, "").trim();
+  return line.replace(/^(nb|note|n\.?b\.?|n\/b)\s*[:\-]\s*/i, "").trim();
 }
 
 function extractBibleReferences(text) {
@@ -946,6 +1300,81 @@ function containsBibleReference(text) {
 function extractMetaValue(lines, regex) {
   const line = lines.find((item) => regex.test(item));
   return line ? line.split(":").slice(1).join(":").trim() : "";
+}
+
+// Detect dates in natural format (e.g., "February 27, 2021", "27th January 2024", "2024-02-15")
+function extractDateFromContent(lines) {
+  // Common date patterns - try to match dates that may have additional text after (like "March 7, 2026 (18 Adar)")
+  const datePatterns = [
+    // Month DD, YYYY or Month DD YYYY (with optional text after like "(18 Adar)")
+    /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}(?:\s*\([^)]*\))?/i,
+    // DD Month YYYY
+    /\b\d{1,2}(?:st|nd|rd|th)?\s+(January|February|March|April|May|June|July|August|September|October|November|December),?\s+\d{4}\b/i,
+    // YYYY-MM-DD
+    /\b\d{4}-\d{2}-\d{2}\b/,
+    // DD/MM/YYYY or MM/DD/YYYY
+    /\b\d{1,2}\/\d{1,2}\/\d{4}\b/
+  ];
+
+  for (const line of lines) {
+    for (const pattern of datePatterns) {
+      const match = line.match(pattern);
+      if (match) {
+        return match[0];
+      }
+    }
+  }
+  return null;
+}
+
+// Extract topic from content - look for first significant line that could be a topic
+function extractTopicFromContent(lines, existingTopic, detectedDate) {
+  // If we already have a topic from explicit marker, use it
+  if (existingTopic) {
+    return existingTopic;
+  }
+
+  // Skip lines that are clearly not topics (dates, scripture references, questions, notes)
+  // Also skip the detected date line
+  const skipPatterns = [
+    /^date\s*:/i,
+    /^lesson\s*date\s*:/i,
+    /^scripture\s*reading/i,
+    /^memory\s*verse/i,
+    /^reading/i,
+    /\?$/,
+    /^(nb|note|n\/b)\s*[:\-]/i,
+    /^\d{1,2}:\d{1,2}/ // Bible chapter:verse
+  ];
+
+  // If we detected a date, also skip lines that contain that date
+  // Use simple string includes for date matching (case-insensitive)
+  const dateLower = detectedDate ? detectedDate.toLowerCase() : null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    // Skip empty lines
+    if (!trimmed) continue;
+    // Skip lines that match skip patterns
+    if (skipPatterns.some(pattern => pattern.test(trimmed))) continue;
+    // Skip lines that contain the detected date (like "Lesson for March 7, 2026")
+    if (dateLower && trimmed.toLowerCase().includes(dateLower)) continue;
+    // Skip lines that look like Bible references
+    if (/^[1-3]\\s*[A-Za-z]+\\s+\\d+/.test(trimmed)) continue;
+
+    // This could be the topic - return it if it looks substantial
+    if (trimmed.length > 2 && trimmed.length < 100) {
+      return trimmed;
+    }
+  }
+  return "";
+}
+// Extract subtopic from content
+function extractSubtopicFromContent(lines, existingSubtopic) {
+  if (existingSubtopic) {
+    return existingSubtopic;
+  }
+  return "";
 }
 
 function setStatus(message) {
@@ -964,3 +1393,5 @@ function escapeHtml(value = "") {
 function delay(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
+
+

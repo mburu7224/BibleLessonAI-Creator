@@ -13,7 +13,34 @@
   </header>
 
   <main class="backend-grid">
-    <section class="panel control-panel">
+    <!-- Left Panel: Slide Preview -->
+    <section class="panel preview-panel">
+      <h2>Dynamic Slide Preview</h2>
+      <p class="muted">Slides include 4+ visual layers, geometric accents, answer/notes boxes, and motion.</p>
+
+      <div id="previewShell" class="preview-shell">
+        <div id="generatedSlidesContainer" class="generated-slides-container"></div>
+
+        <div id="thinkingOverlay" class="thinking-overlay hidden">
+          <div class="thinking-dots" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <p>Generating slide layers...</p>
+        </div>
+      </div>
+
+      <div class="button-row preview-buttons">
+        <button id="prevSlideBtn" type="button">Previous Slide</button>
+        <button id="nextSlideBtn" type="button">Next Slide</button>
+        <button id="sendLiveBtn" type="button">Send Live Index</button>
+        <button id="generatePptxBtn" type="button">Generate PPTX</button>
+      </div>
+    </section>
+
+    <!-- Right Panel: Lesson Creation / AI Editor -->
+    <section class="panel control-panel scrollable-panel">
       <h2>Lesson Input & AI Generation</h2>
       <p class="muted">Paste lesson content and generate structured, animated slides.</p>
 
@@ -92,39 +119,17 @@
 
       <p id="creatorStatus" class="status">Ready.</p>
 
-      <div id="thinkingWrap" class="thinking-wrap hidden">
-        <div class="thinking-dots" aria-hidden="true">
-          <span></span>
-          <span></span>
-          <span></span>
-        </div>
-        <p>AI is parsing lesson content and composing layered slides...</p>
-      </div>
-    </section>
+      <!-- Saved Bible Lessons Container - YouTube-style -->
+      <section id="savedLessonsSection" class="saved-lessons-section">
+        <h3>Saved Bible Lessons</h3>
+        <div id="savedLessonsContainer" class="saved-lessons-container"></div>
+      </section>
 
-    <section class="panel preview-panel">
-      <h2>Dynamic Slide Preview</h2>
-      <p class="muted">Slides include 4+ visual layers, geometric accents, answer/notes boxes, and motion.</p>
-
-      <div id="previewShell" class="preview-shell">
-        <div id="generatedSlidesContainer" class="generated-slides-container"></div>
-
-        <div id="thinkingOverlay" class="thinking-overlay hidden">
-          <div class="thinking-dots" aria-hidden="true">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-          <p>Generating slide layers...</p>
-        </div>
-      </div>
-
-      <div class="button-row preview-buttons">
-        <button id="prevSlideBtn" type="button">Previous Slide</button>
-        <button id="nextSlideBtn" type="button">Next Slide</button>
-        <button id="sendLiveBtn" type="button">Send Live Index</button>
-        <button id="generatePptxBtn" type="button">Generate PPTX</button>
-      </div>
+      <!-- Projects List Section - appears below save confirmation -->
+      <section id="projectsSection" class="projects-section hidden">
+        <h3>Saved Projects</h3>
+        <div id="projectsListContainer" class="projects-list"></div>
+      </section>
 
       <label class="tweak-field">
         Tweak Prompt (Optional)
@@ -140,8 +145,84 @@
         <h3>Slides Outline</h3>
         <div id="slidesList" class="slides-list"></div>
       </section>
+
+      <div id="thinkingWrap" class="thinking-wrap hidden">
+        <div class="thinking-dots" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <p>AI is parsing lesson content and composing layered slides...</p>
+      </div>
     </section>
   </main>
+
+  <!-- Edit Lesson Modal -->
+  <div id="editModal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Edit Lesson</h2>
+        <button id="closeModalBtn" class="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="row">
+          <label>
+            Main Topic
+            <input id="modalMainTopic" type="text" />
+          </label>
+          <label>
+            Subtopic
+            <input id="modalSubtopic" type="text" />
+          </label>
+        </div>
+        <div class="row">
+          <label>
+            Scripture Reading
+            <input id="modalScriptureReading" type="text" />
+          </label>
+          <label>
+            Memory Verse
+            <input id="modalMemoryVerse" type="text" />
+          </label>
+        </div>
+        <div class="row">
+          <label>
+            Lesson Date
+            <input id="modalLessonDate" type="text" />
+          </label>
+          <label>
+            Creator ID
+            <input id="modalCreatorId" type="text" />
+          </label>
+        </div>
+        <div class="row">
+          <label>
+            Theme Variant
+            <select id="modalThemeSelect">
+              <option value="1">Theme 1 - Royal Blue</option>
+              <option value="2">Theme 2 - Sunrise Gold</option>
+              <option value="3">Theme 3 - Olive Stone</option>
+            </select>
+          </label>
+          <label>
+            Public Project
+            <select id="modalIsPublic">
+              <option value="true">true</option>
+              <option value="false">false</option>
+            </select>
+          </label>
+        </div>
+        <label>
+          Lesson Content
+          <textarea id="modalLessonContent"></textarea>
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelEditBtn" type="button">Cancel</button>
+        <button id="saveEditBtn" type="button">Save Changes</button>
+      </div>
+    </div>
+  </div>
 
   <script type="module" src="./app.js"></script>
 </body>
