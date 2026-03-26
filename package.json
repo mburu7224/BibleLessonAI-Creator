@@ -1,16 +1,20 @@
 {
   "name": "bible-lesson-ai-backend",
   "version": "1.0.0",
-  "description": "Backend API for BibleLessonAI starter",
+  "description": "Backend API for lesson slide generation and presentation export",
   "type": "module",
   "main": "server.js",
   "scripts": {
+    "build:cpp": "make cpp",
     "start": "node server.js",
     "dev": "node server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "firebase": "^11.7.1"
+    "firebase": "^11.7.1",
+    "openai": "^4.104.0",
+    "pptxgenjs": "^4.0.1"
   }
 }

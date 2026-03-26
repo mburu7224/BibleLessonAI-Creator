@@ -3,21 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BibleLessonAI Creator + Brain</title>
+  <title>Lesson Slides Studio</title>
   <link rel="stylesheet" href="./style.css" />
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
   <header class="app-header">
-    <h1>BibleLessonAI Creator + Brain</h1>
-    <div id="apiStatus" class="muted">API: checking...</div>
+    <div>
+      <h1>Lesson Slides Studio</h1>
+      <div id="apiStatus" class="muted">Service: checking...</div>
+    </div>
+    <div class="auth-bar">
+      <input id="creatorIdInput" type="text" value="user123" placeholder="Creator ID" />
+      <input id="adminPasswordInput" type="password" placeholder="Admin password" />
+      <button id="loginBtn" type="button">Log In</button>
+      <button id="logoutBtn" type="button">Log Out</button>
+      <span id="authStatus" class="muted">Not authenticated</span>
+    </div>
   </header>
 
   <main class="backend-grid">
     <!-- Left Panel: Slide Preview -->
     <section class="panel preview-panel">
       <h2>Dynamic Slide Preview</h2>
-      <p class="muted">Slides include 4+ visual layers, geometric accents, answer/notes boxes, and motion.</p>
+      <p class="muted">Review the active slide layout and presentation content.</p>
 
       <div id="previewShell" class="preview-shell">
         <div id="generatedSlidesContainer" class="generated-slides-container"></div>
@@ -28,7 +37,7 @@
             <span></span>
             <span></span>
           </div>
-          <p>Generating slide layers...</p>
+          <p>Preparing slides...</p>
         </div>
       </div>
 
@@ -40,10 +49,10 @@
       </div>
     </section>
 
-    <!-- Right Panel: Lesson Creation / AI Editor -->
+    <!-- Right Panel: Lesson Creation -->
     <section class="panel control-panel scrollable-panel">
-      <h2>Lesson Input & AI Generation</h2>
-      <p class="muted">Paste lesson content and generate structured, animated slides.</p>
+      <h2>Lesson Input</h2>
+      <p class="muted">Paste lesson content, refine the instructions, and prepare a normalized slide deck.</p>
 
       <label>
         Lesson Content
@@ -77,11 +86,11 @@
 
       <div class="row">
         <label>
-          Main Topic (AI can auto-fill)
+          Main Topic
           <input id="mainTopicInput" type="text" placeholder="TRIALS" />
         </label>
         <label>
-          Subtopic (AI can auto-fill)
+          Subtopic
           <input id="subtopicInput" type="text" placeholder="Endurance in Faith" />
         </label>
       </div>
@@ -106,25 +115,10 @@
 
       <div class="row">
         <label>
-          Creator ID
-          <input id="creatorIdInput" type="text" value="user123" />
-        </label>
-        <label>
           Public Project
           <select id="isPublicSelect">
             <option value="true" selected>true</option>
             <option value="false">false</option>
-          </select>
-        </label>
-      </div>
-
-      <div class="row">
-        <label>
-          Theme Variant
-          <select id="themeSelect">
-            <option value="1">Theme 1 - Royal Blue</option>
-            <option value="2">Theme 2 - Sunrise Gold</option>
-            <option value="3">Theme 3 - Olive Stone</option>
           </select>
         </label>
         <label>
@@ -135,10 +129,25 @@
         </label>
       </div>
 
+      <div class="row">
+        <label>
+          Layout Variant
+          <select id="themeSelect">
+            <option value="1">Variant 1 - Standard</option>
+            <option value="2">Variant 2 - Slate</option>
+            <option value="3">Variant 3 - Stone</option>
+          </select>
+        </label>
+        <label>
+          Response Contract
+          <textarea readonly>The API returns { mainTopic, subtopic, scriptureReading, memoryVerse, lessonDate, themeId, suggestions, slides[] } and each slide returns { type, question, answer, notes, questionNumber, scriptureReading, memoryVerse, themeId }.</textarea>
+        </label>
+      </div>
+
       <div class="button-row">
         <button id="loadSampleBtn" type="button">Load Sample</button>
         <button id="generateBtn" type="button">Generate Slides</button>
-        <button id="redesignBtn" type="button">Redesign Theme</button>
+        <button id="redesignBtn" type="button">Apply Variant</button>
         <button id="saveBtn" type="button">Save Project</button>
         <button id="refreshProjectsBtn" type="button">Refresh Projects</button>
       </div>
@@ -159,11 +168,11 @@
 
       <label class="tweak-field">
         Tweak Prompt (Optional)
-        <textarea id="tweakInput" placeholder="Example: Make question slides more concise and notes more reflective."></textarea>
+        <textarea id="tweakInput" placeholder="Example: Make question slides more concise, keep note slides pastoral, and use stronger memory verse framing."></textarea>
       </label>
 
       <section class="suggestions-block">
-        <h3>AI Suggestions</h3>
+        <h3>Editorial Notes</h3>
         <ul id="suggestionsList" class="suggestions-list"></ul>
       </section>
 
@@ -178,7 +187,7 @@
           <span></span>
           <span></span>
         </div>
-        <p>AI is parsing lesson content and composing layered slides...</p>
+        <p>Processing lesson content...</p>
       </div>
     </section>
   </main>
@@ -225,9 +234,9 @@
           <label>
             Theme Variant
             <select id="modalThemeSelect">
-              <option value="1">Theme 1 - Royal Blue</option>
-              <option value="2">Theme 2 - Sunrise Gold</option>
-              <option value="3">Theme 3 - Olive Stone</option>
+              <option value="1">Variant 1 - Standard</option>
+              <option value="2">Variant 2 - Slate</option>
+              <option value="3">Variant 3 - Stone</option>
             </select>
           </label>
           <label>
