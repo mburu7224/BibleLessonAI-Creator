@@ -10,7 +10,8 @@ function getStoredValue(key, fallback = "") {
 
 export const state = {
   authToken: getStoredValue("bliauth_token", ""),
-  creatorId: getStoredValue("bliauth_creator", "user123"),
+  userEmail: getStoredValue("bliauth_email", ""),
+  displayName: getStoredValue("bliauth_display_name", ""),
   projectId: "",
   currentSlideIndex: 0,
   isGenerating: false,
@@ -30,9 +31,10 @@ export const state = {
   }
 };
 
-export function setAuthSession({ token, creatorId }) {
+export function setAuthSession({ token, email, displayName }) {
   state.authToken = token || "";
-  state.creatorId = creatorId || "";
+  state.userEmail = email || "";
+  state.displayName = displayName || "";
 
   if (typeof localStorage === "undefined") {
     return;
@@ -44,9 +46,15 @@ export function setAuthSession({ token, creatorId }) {
     localStorage.removeItem("bliauth_token");
   }
 
-  if (creatorId) {
-    localStorage.setItem("bliauth_creator", creatorId);
+  if (email) {
+    localStorage.setItem("bliauth_email", email);
   } else {
-    localStorage.removeItem("bliauth_creator");
+    localStorage.removeItem("bliauth_email");
+  }
+
+  if (displayName) {
+    localStorage.setItem("bliauth_display_name", displayName);
+  } else {
+    localStorage.removeItem("bliauth_display_name");
   }
 }

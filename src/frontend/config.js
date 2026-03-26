@@ -15,3 +15,6 @@ export const SAMPLE_LESSON_TEXT = [
   "How does Paul exhort the brethren? Rom. 12:1-2.",
   "What else are we to teach our children? 1 John 2:15-17."
 ].join("\n");
+
+export const API_BASE_URL =
+  globalThis.localStorage?.getItem("lesson_slides_api_base_url") || "http://localhost:8787";

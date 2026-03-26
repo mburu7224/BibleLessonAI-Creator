@@ -1,98 +1,85 @@
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  orderBy,
-  query,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-  where
-} from "firebase/firestore";
-import { appSettings } from "../../../firebaseConfig.js";
-import { db } from "./firebase.js";
+import { FieldValue } from "firebase-admin/firestore";
+import { env } from "../config/env.js";
+import { getAdminDb } from "./firebase.js";
 
-const projectsRef = collection(db, appSettings.projectsCollection);
-const liveRef = collection(db, appSettings.liveCollection);
-
-export async function listCreatorProjects(creatorId) {
-  const snapshot = await getDocs(query(projectsRef, where("creatorId", "==", creatorId)));
-  return snapshot.docs.map((projectDoc) => ({ id: projectDoc.id, ...projectDoc.data() }));
-}
-
-export async function listPublicProjects() {
-  let snapshot;
-
-  try {
-    snapshot = await getDocs(query(projectsRef, where("isPublic", "==", true), orderBy("createdAt", "desc")));
-  } catch {
-    snapshot = await getDocs(query(projectsRef, where("isPublic", "==", true)));
-  }
-
-  return snapshot.docs.map((projectDoc) => ({ id: projectDoc.id, ...projectDoc.data() }));
-}
-
-export async function getProject(projectId) {
-  const snapshot = await getDoc(doc(db, appSettings.projectsCollection, projectId));
-  if (!snapshot.exists()) {
+function normalizeSnapshot(snapshot) {
+  if (!snapshot.exists) {
     return null;
   }
 
   return { id: snapshot.id, ...snapshot.data() };
 }
 
-export async function createProject(project) {
-  const payload = {
-    ...project,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
+export function createProjectsRepository(db = getAdminDb()) {
+  const projects = db.collection(env.firebaseProjectsCollection);
+  const live = db.collection(env.firebaseLiveCollection);
+
+  return {
+    async listCreatorProjects(ownerUid) {
+      const snapshot = await projects.where("ownerUid", "==", ownerUid).get();
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    },
+
+    async listPublicProjects() {
+      const snapshot = await projects.where("isPublic", "==", true).get();
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    },
+
+    async getProject(projectId) {
+      const snapshot = await projects.doc(projectId).get();
+      return normalizeSnapshot(snapshot);
+    },
+
+    async createProject(project) {
+      const created = await projects.add({
+        ...project,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp()
+      });
+      return created.id;
+    },
+
+    async updateProject(projectId, project) {
+      await projects.doc(projectId).set(
+        {
+          ...project,
+          updatedAt: FieldValue.serverTimestamp()
+        },
+        { merge: true }
+      );
+    },
+
+    async deleteProject(projectId) {
+      await projects.doc(projectId).delete();
+    },
+
+    async updateProjectPptx(projectId, pptxUrl) {
+      await projects.doc(projectId).set(
+        {
+          pptxUrl,
+          updatedAt: FieldValue.serverTimestamp()
+        },
+        { merge: true }
+      );
+    },
+
+    async getLiveState(projectId) {
+      const snapshot = await live.doc(projectId).get();
+      if (!snapshot.exists) {
+        return { projectId, currentSlideIndex: 0 };
+      }
+
+      return { projectId, ...snapshot.data() };
+    },
+
+    async setLiveState(projectId, payload) {
+      await live.doc(projectId).set(
+        {
+          ...payload,
+          updatedAt: FieldValue.serverTimestamp()
+        },
+        { merge: true }
+      );
+    }
   };
-
-  const created = await addDoc(projectsRef, payload);
-  return created.id;
-}
-
-export async function updateProject(projectId, project) {
-  await setDoc(
-    doc(db, appSettings.projectsCollection, projectId),
-    {
-      ...project,
-      updatedAt: serverTimestamp()
-    },
-    { merge: true }
-  );
-}
-
-export async function deleteProject(projectId) {
-  await deleteDoc(doc(db, appSettings.projectsCollection, projectId));
-}
-
-export async function updateProjectPptx(projectId, pptxUrl) {
-  await updateDoc(doc(db, appSettings.projectsCollection, projectId), {
-    pptxUrl,
-    updatedAt: serverTimestamp()
-  });
-}
-
-export async function getLiveState(projectId) {
-  const snapshot = await getDoc(doc(liveRef, projectId));
-  if (!snapshot.exists()) {
-    return { projectId, currentSlideIndex: 0 };
-  }
-
-  return { projectId, ...snapshot.data() };
-}
-
-export async function setLiveState(projectId, payload) {
-  await setDoc(
-    doc(liveRef, projectId),
-    {
-      ...payload,
-      updatedAt: serverTimestamp()
-    },
-    { merge: true }
-  );
 }

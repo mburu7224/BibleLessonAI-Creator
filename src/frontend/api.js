@@ -1,4 +1,4 @@
-import { appSettings } from "../../firebaseConfig.js";
+import { API_BASE_URL } from "./config.js";
 import { state } from "./state.js";
 
 async function request(path, options = {}) {
@@ -9,7 +9,7 @@ async function request(path, options = {}) {
     headers.set("Authorization", `Bearer ${state.authToken}`);
   }
 
-  const response = await fetch(`${appSettings.backendApiBaseUrl}${path}`, {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers
   });
@@ -32,10 +32,16 @@ export const api = {
   getHealth() {
     return request("/api/health", { method: "GET" });
   },
-  createSession({ creatorId, password }) {
-    return request("/api/auth/session", {
+  register({ email, password, displayName }) {
+    return request("/api/auth/register", {
       method: "POST",
-      body: JSON.stringify({ creatorId, password })
+      body: JSON.stringify({ email, password, displayName })
+    });
+  },
+  login({ email, password }) {
+    return request("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password })
     });
   },
   generateSlides(payload) {
@@ -44,8 +50,8 @@ export const api = {
       body: JSON.stringify(payload)
     });
   },
-  listProjects(creatorId) {
-    return request(`/api/projects?creatorId=${encodeURIComponent(creatorId)}`, { method: "GET" });
+  listProjects() {
+    return request("/api/projects", { method: "GET" });
   },
   getProject(projectId) {
     return request(`/api/projects/${projectId}`, { method: "GET" });
