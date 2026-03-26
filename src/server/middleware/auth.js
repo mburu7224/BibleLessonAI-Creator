@@ -1,26 +1,29 @@
-import { env } from "../config/env.js";
 import { HttpError } from "../lib/http-error.js";
-import { verifySessionToken } from "../services/token-service.js";
 
-export function requireConfiguredAuth(_req, _res, next) {
-  if (!env.adminPassword || !env.sessionSecret) {
-    next(new HttpError(503, "Auth is not configured. Set ADMIN_PASSWORD and SESSION_SECRET."));
-    return;
-  }
+export function requireConfiguredAuth(authService) {
+  return function configuredAuthMiddleware(_req, _res, next) {
+    if (!authService.isConfigured()) {
+      next(new HttpError(503, "Auth is not configured. Check Firebase Admin and Web API env values."));
+      return;
+    }
 
-  next();
+    next();
+  };
 }
 
-export function requireAuth(req, _res, next) {
-  const rawHeader = req.headers.authorization || "";
-  const token = rawHeader.startsWith("Bearer ") ? rawHeader.slice(7) : "";
-  const payload = verifySessionToken(token);
+export function requireAuth(authService) {
+  return async function authMiddleware(req, _res, next) {
+    try {
+      const rawHeader = req.headers.authorization || "";
+      const token = rawHeader.startsWith("Bearer ") ? rawHeader.slice(7) : "";
+      if (!token) {
+        throw new HttpError(401, "Unauthorized");
+      }
 
-  if (!payload?.creatorId) {
-    next(new HttpError(401, "Unauthorized"));
-    return;
-  }
-
-  req.auth = payload;
-  next();
+      req.auth = await authService.verifyIdToken(token);
+      next();
+    } catch (error) {
+      next(error instanceof HttpError ? error : new HttpError(401, "Unauthorized"));
+    }
+  };
 }

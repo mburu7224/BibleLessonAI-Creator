@@ -7,9 +7,12 @@ import { DEFAULT_THEME_ID, normalizeProject } from "../shared/slide-contract.js"
 const refs = {
   apiStatus: document.getElementById("apiStatus"),
   authStatus: document.getElementById("authStatus"),
-  adminPasswordInput: document.getElementById("adminPasswordInput"),
+  registerBtn: document.getElementById("registerBtn"),
   loginBtn: document.getElementById("loginBtn"),
   logoutBtn: document.getElementById("logoutBtn"),
+  displayNameInput: document.getElementById("displayNameInput"),
+  emailInput: document.getElementById("emailInput"),
+  passwordInput: document.getElementById("passwordInput"),
   creatorStatus: document.getElementById("creatorStatus"),
   lessonTextInput: document.getElementById("lessonTextInput"),
   mainTopicInput: document.getElementById("mainTopicInput"),
@@ -17,7 +20,6 @@ const refs = {
   scriptureReadingInput: document.getElementById("scriptureReadingInput"),
   memoryVerseInput: document.getElementById("memoryVerseInput"),
   lessonDateInput: document.getElementById("lessonDateInput"),
-  creatorIdInput: document.getElementById("creatorIdInput"),
   isPublicSelect: document.getElementById("isPublicSelect"),
   themeSelect: document.getElementById("themeSelect"),
   savedProjectsSelect: document.getElementById("savedProjectsSelect"),
@@ -45,7 +47,8 @@ initialize();
 
 async function initialize() {
   refs.lessonTextInput.value = SAMPLE_LESSON_TEXT;
-  refs.creatorIdInput.value = state.creatorId;
+  refs.emailInput.value = state.userEmail;
+  refs.displayNameInput.value = state.displayName;
   bindEvents();
   loadSampleProject();
   await checkApiHealth();
@@ -57,6 +60,7 @@ async function initialize() {
 }
 
 function bindEvents() {
+  refs.registerBtn.addEventListener("click", register);
   refs.loginBtn.addEventListener("click", login);
   refs.logoutBtn.addEventListener("click", logout);
   refs.loadSampleBtn.addEventListener("click", loadSampleProject);
@@ -104,18 +108,23 @@ function loadSampleProject() {
 }
 
 async function login() {
-  const creatorId = refs.creatorIdInput.value.trim();
-  const password = refs.adminPasswordInput.value;
+  const email = refs.emailInput.value.trim();
+  const password = refs.passwordInput.value;
 
-  if (!creatorId || !password) {
-    setStatus("Enter both Creator ID and admin password.");
+  if (!email || !password) {
+    setStatus("Enter both email and password.");
     return;
   }
 
   try {
-    const result = await api.createSession({ creatorId, password });
-    setAuthSession({ token: result.token, creatorId: result.user.creatorId });
-    refs.adminPasswordInput.value = "";
+    const result = await api.login({ email, password });
+    setAuthSession({
+      token: result.token,
+      email: result.user.email,
+      displayName: result.user.displayName
+    });
+    refs.passwordInput.value = "";
+    refs.displayNameInput.value = result.user.displayName || refs.displayNameInput.value;
     renderAuthState();
     await refreshProjects();
     setStatus("Authenticated. Protected actions are enabled.");
@@ -124,8 +133,27 @@ async function login() {
   }
 }
 
+async function register() {
+  const displayName = refs.displayNameInput.value.trim();
+  const email = refs.emailInput.value.trim();
+  const password = refs.passwordInput.value;
+
+  if (!displayName || !email || !password) {
+    setStatus("Enter display name, email, and password.");
+    return;
+  }
+
+  try {
+    await api.register({ displayName, email, password });
+    setStatus("Account created. Signing in...");
+    await login();
+  } catch (error) {
+    setStatus(`Registration failed: ${error.message}`);
+  }
+}
+
 function logout() {
-  setAuthSession({ token: "", creatorId: refs.creatorIdInput.value.trim() || "" });
+  setAuthSession({ token: "", email: refs.emailInput.value.trim() || "", displayName: refs.displayNameInput.value.trim() || "" });
   state.projectId = "";
   renderAuthState();
   refs.savedProjectsSelect.innerHTML = `<option value="">-- load existing --</option>`;
@@ -197,7 +225,7 @@ async function refreshProjects() {
   }
 
   try {
-    const result = await api.listProjects(refs.creatorIdInput.value.trim() || state.creatorId);
+    const result = await api.listProjects();
     renderProjects(refs, result.projects);
     if (!result.projects.length) {
       setStatus("No projects found for this creator yet.");
@@ -291,7 +319,7 @@ async function checkApiHealth() {
 function hydrateProject(project) {
   state.project = normalizeProject({
     ...project,
-    creatorId: refs.creatorIdInput.value.trim() || state.creatorId
+    creatorId: state.displayName || state.userEmail
   });
   state.currentSlideIndex = 0;
 
@@ -357,12 +385,14 @@ function buildEditableProjectPayload() {
 
 function renderAuthState() {
   const isLoggedIn = Boolean(state.authToken);
-  refs.creatorIdInput.value = state.creatorId;
-  refs.creatorIdInput.disabled = isLoggedIn;
+  refs.emailInput.value = state.userEmail;
+  refs.displayNameInput.value = state.displayName;
+  refs.emailInput.disabled = isLoggedIn;
   refs.loginBtn.disabled = isLoggedIn;
+  refs.registerBtn.disabled = isLoggedIn;
   refs.logoutBtn.disabled = !isLoggedIn;
   refs.authStatus.textContent = isLoggedIn
-    ? `Authenticated as ${state.creatorId}`
+    ? `Authenticated as ${state.displayName || state.userEmail}`
     : "Signed out";
 }
 
