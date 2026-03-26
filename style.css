@@ -1,12 +1,13 @@
 :root {
-  --bg: #eef2f8;
+  --bg: #f2f2f0;
   --panel: #ffffff;
-  --border: #d6ddea;
-  --text: #142034;
-  --muted: #627188;
-  --accent: #2750d8;
-  --ok: #0a7d5e;
-  --danger: #bb2f3d;
+  --border: #d0d0cb;
+  --text: #191919;
+  --muted: #636363;
+  --accent: #4c4c4c;
+  --surface: #f7f7f5;
+  --surface-strong: #ededeb;
+  --overlay: rgba(255, 255, 255, 0.92);
 }
 
 * {
@@ -16,7 +17,7 @@
 body {
   margin: 0;
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  background: radial-gradient(circle at 20% 20%, #f9fbff 0%, #edf2fa 48%, #e4ebf6 100%);
+  background: var(--bg);
   color: var(--text);
 }
 
@@ -27,7 +28,7 @@ body {
   gap: 14px;
   padding: 14px 20px;
   border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.88);
+  background: var(--overlay);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   position: sticky;
@@ -38,6 +39,18 @@ body {
 .app-header h1 {
   margin: 0;
   font-size: 1.15rem;
+}
+
+.auth-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.auth-bar input {
+  min-width: 140px;
 }
 
 .backend-grid {
@@ -95,6 +108,11 @@ textarea {
   resize: vertical;
 }
 
+textarea[readonly] {
+  min-height: 120px;
+  background: var(--surface);
+}
+
 /* Input with icons wrapper */
 .input-with-icons {
   position: relative;
@@ -124,20 +142,20 @@ textarea {
   padding: 0;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: #fff;
+  background: var(--panel);
   color: var(--muted);
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .icon-btn:hover {
-  background: #f4f7fb;
+  background: var(--surface);
   border-color: var(--accent);
   color: var(--accent);
 }
 
 .icon-btn:active {
-  background: #eef2f8;
+  background: var(--surface-strong);
 }
 
 .icon-btn:disabled {
@@ -148,11 +166,11 @@ textarea {
 .image-preview-indicator {
   margin-top: 6px;
   padding: 6px 10px;
-  background: #e8f5e9;
-  border: 1px solid #a5d6a7;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 0.85rem;
-  color: #2e7d32;
+  color: var(--text);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -167,7 +185,7 @@ textarea {
 .image-thumbnails-container {
   margin-top: 10px;
   padding: 10px;
-  background: #f8f9fa;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
 }
@@ -185,7 +203,7 @@ textarea {
   border-radius: 6px;
   overflow: hidden;
   border: 2px solid var(--border);
-  background: #fff;
+  background: var(--panel);
 }
 
 .image-thumbnail img {
@@ -203,7 +221,7 @@ textarea {
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(187, 47, 61, 0.9);
+  background: rgba(30, 30, 30, 0.9);
   color: white;
   font-size: 14px;
   line-height: 1;
@@ -220,7 +238,7 @@ textarea {
 }
 
 .image-thumbnail .remove-btn:hover {
-  background: #bb2f3d;
+  background: #000000;
 }
 
 .image-count-indicator {
@@ -236,17 +254,17 @@ button {
   font-family: inherit;
   font-size: 0.9rem;
   cursor: pointer;
-  background: #fff;
+  background: var(--panel);
   transition: all 0.15s;
 }
 
 button:hover {
-  background: #f4f7fb;
+  background: var(--surface);
   border-color: var(--accent);
 }
 
 button:active {
-  background: #eef2f8;
+  background: var(--surface-strong);
 }
 
 .button-row {
@@ -318,7 +336,7 @@ button:active {
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--overlay);
   border-radius: 14px;
 }
 
@@ -335,7 +353,7 @@ button:active {
   min-height: 460px;
   position: relative;
   display: none;
-  background: linear-gradient(135deg, #e3edff 0%, #ffffff 100%);
+  background: var(--panel);
 }
 
 .slide-stage.active {
@@ -343,11 +361,11 @@ button:active {
 }
 
 .slide-stage.theme-2 {
-  background: linear-gradient(135deg, #fef6e0 0%, #fffefa 100%);
+  background: #fbfbfa;
 }
 
 .slide-stage.theme-3 {
-  background: linear-gradient(135deg, #e3f9e8 0%, #fafffc 100%);
+  background: #f5f5f3;
 }
 
 .empty-preview {
@@ -452,7 +470,7 @@ button:active {
 
 .slide-subtopic {
   font-size: 1rem;
-  color: var(--accent);
+  color: var(--text);
 }
 
 .slide-date {
@@ -476,7 +494,7 @@ button:active {
   place-items: center;
   width: 60px;
   height: 60px;
-  background: #fff;
+  background: var(--panel);
   border: 2px solid var(--accent);
   border-radius: 14px;
   font-size: 1.4rem;
@@ -485,7 +503,7 @@ button:active {
 }
 
 .highlight-box {
-  background: #fff;
+  background: var(--panel);
   padding: 16px;
   border-radius: 12px;
   border: 1px solid var(--border);
@@ -500,7 +518,7 @@ button:active {
 }
 
 .answer-box {
-  background: #fff;
+  background: var(--panel);
   padding: 14px;
   border-radius: 10px;
   margin-top: 10px;
@@ -517,11 +535,11 @@ button:active {
 }
 
 .notes-box {
-  background: #fff9e6;
+  background: var(--surface);
   padding: 14px;
   border-radius: 10px;
   margin-top: 10px;
-  border: 1px solid #f5e6b8;
+  border: 1px solid var(--border);
 }
 
 .twin-box-grid {
@@ -532,11 +550,11 @@ button:active {
 }
 
 .note-only-box {
-  background: #fff9e6;
+  background: var(--surface);
   padding: 20px;
   border-radius: 12px;
   margin-top: 14px;
-  border: 1px solid #f5e6b8;
+  border: 1px solid var(--border);
 }
 
 .note-slide-header {
@@ -554,7 +572,7 @@ button:active {
 
 .flourish {
   position: absolute;
-  opacity: 0.4;
+  opacity: 0.14;
 }
 
 .flourish-1 {
@@ -611,7 +629,7 @@ button:active {
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 10px;
-  background: #fff;
+  background: var(--panel);
   text-align: left;
   cursor: pointer;
 }
@@ -622,7 +640,7 @@ button:active {
 
 .slide-item.active {
   border-color: var(--accent);
-  background: #f4f7fb;
+  background: var(--surface);
 }
 
 .slide-item strong {
@@ -669,21 +687,21 @@ button:active {
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: #fafbfc;
+  background: var(--surface);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .lesson-card:hover {
   border-color: var(--accent);
-  background: #f4f7fb;
+  background: var(--panel);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(39, 80, 216, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .lesson-card.active {
   border-color: var(--accent);
-  background: #eef4ff;
+  background: var(--surface-strong);
 }
 
 .lesson-card-header {
@@ -725,7 +743,7 @@ button:active {
   font-size: 0.7rem;
   padding: 2px 6px;
   border-radius: 4px;
-  background: #e8eef8;
+  background: var(--surface-strong);
   color: var(--muted);
 }
 
@@ -746,23 +764,23 @@ button:active {
 }
 
 .lesson-card-actions .edit-btn {
-  background: var(--ok);
+  background: var(--text);
   color: white;
   border: none;
 }
 
 .lesson-card-actions .edit-btn:hover {
-  background: #06925a;
+  background: #000000;
 }
 
 .lesson-card-actions .delete-btn {
-  background: var(--danger);
+  background: #6a6a6a;
   color: white;
   border: none;
 }
 
 .lesson-card-actions .delete-btn:hover {
-  background: #a32833;
+  background: #4f4f4f;
 }
 
 /* Projects List Section Styles */
@@ -792,18 +810,18 @@ button:active {
   padding: 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fafbfc;
+  background: var(--surface);
   cursor: pointer;
 }
 
 .project-card:hover {
   border-color: var(--accent);
-  background: #f4f7fb;
+  background: var(--panel);
 }
 
 .project-card.active {
   border-color: var(--accent);
-  background: #eef4ff;
+  background: var(--surface-strong);
 }
 
 .project-card-topic {
@@ -830,18 +848,28 @@ button:active {
 }
 
 .project-card-actions .edit-btn {
-  background: var(--ok);
+  background: var(--text);
   color: white;
   border: none;
 }
 
 .project-card-actions .delete-btn {
-  background: var(--danger);
+  background: #6a6a6a;
   color: white;
   border: none;
 }
 
 @media (max-width: 900px) {
+  .app-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .auth-bar {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
   .backend-grid {
     grid-template-columns: 1fr;
     height: auto;
@@ -879,7 +907,7 @@ button:active {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.38);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
   display: flex;
@@ -962,15 +990,15 @@ button:active {
 }
 
 .modal-footer #saveEditBtn {
-  background: var(--accent);
+  background: var(--text);
   color: white;
   border: none;
 }
 
 .modal-footer #saveEditBtn:hover {
-  background: #1a40c9;
+  background: #000000;
 }
 
 .modal-footer #cancelEditBtn {
-  background: #f4f7fb;
+  background: var(--surface);
 }

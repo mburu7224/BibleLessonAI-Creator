@@ -1,0 +1,4 @@
+.env
+generated/*.pptx
+node_modules
+build/deck_guard
