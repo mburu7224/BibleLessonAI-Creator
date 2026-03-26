@@ -1,5 +1,5 @@
 ## A full-stack AI slide generator for Bible lessons
---
+
 # BibleLessonAI Creator is a tool that:
     Takes raw lesson text (structured or semi-structured)
 Uses AI logic (frontend + likely missing backend AI) to:
